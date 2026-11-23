@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integration research agent</title>
+<meta name="description" content="Upload a list of apps; an agent built on Composio researches auth, access, API surface and MCP for each, verifies itself and re-researches what failed.">
+<link rel="stylesheet" href="style.css">
+<script>window.REPO_URL = "https://github.com/YOUR_USERNAME/integration-research-pipeline";</script>
+</head>
+<body>
+<div id="mock-banner" class="mock-banner" hidden>MOCK MODE: fake tools and fake LLM. Results are not real.</div>
+
+<!-- ============================== SCREEN 1: UPLOAD ============================== -->
+<section id="screen-upload" class="screen" hidden>
+  <div class="screen-inner">
+    <div class="upload-card">
+      <div class="card-top">
+        <p class="eyebrow">Integration research agent · built on Composio</p>
+        <div class="sample-box">
+          <button id="sample-btn" class="primary" type="button">Run sample (15 apps) ▶</button>
+          <a href="sample_apps.csv" target="_blank" class="small">view sample</a>
+        </div>
+      </div>
+      <h1>Can these apps become agent toolkits?</h1>
+      <p class="lede">Upload a list of apps. For each one the agent finds the official docs, works out the auth method, whether credentials are self-serve or gated, the API surface and any MCP server, then checks its own evidence and re-researches what fails.</p>
+
+      <label id="dropzone" class="dropzone" for="file-input">
+        <input id="file-input" type="file" accept=".csv,text/csv" hidden>
+        <div class="dz-icon">⬆</div>
+        <div class="dz-main"><b>Drop a CSV here</b> or <u>browse</u></div>
+        <div class="dz-sub">Needs an <code>app</code> column · <code>category</code> and <code>website</code> optional · max <span id="max-rows">100</span> apps · <a href="api/template.csv" onclick="event.stopPropagation()">download template</a></div>
+      </label>
+
+      <div id="file-info" class="file-info" hidden>
+        <div class="file-row"><span id="file-name" class="file-name"></span><span id="file-count" class="pill pill-blue"></span><button id="file-clear" class="link-btn" type="button">change file</button></div>
+        <div id="file-preview" class="scroll-x"></div>
+      </div>
+      <p id="upload-error" class="error" hidden></p>
+      <button id="run-btn" class="primary big" disabled>Run agent ▶</button>
+    </div>
+
+    <div class="flow-wrap">
+      <p class="flow-hint small"><b>The agent's pipeline.</b> Click a step to view or edit its system prompt.</p>
+      <div id="flow-upload" class="flow-nodes"></div>
+      <div class="progress"><div class="progress-fill" style="width:0%"></div></div>
+      <p class="muted center small">Waiting for an upload</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== SCREEN 2: RUN ============================== -->
+<section id="screen-run" class="screen" hidden>
+  <div class="screen-inner wide">
+    <div class="run-head">
+      <div>
+        <p class="eyebrow" id="run-file"></p>
+        <h2 id="run-title">Starting…</h2>
+      </div>
+      <div class="run-meta"><span id="run-elapsed">0:00</span> elapsed</div>
+    </div>
+
+    <div id="flow-run" class="flow-nodes"></div>
+
+    <div class="progress-block">
+      <div class="progress big"><div id="run-bar" class="progress-fill" style="width:0%"></div></div>
+      <div class="progress-label"><b id="run-pct">0%</b><span id="run-stage-label" class="muted"></span></div>
+    </div>
+
+    <div class="run-grid">
+      <div class="card">
+        <h3>Apps</h3>
+        <div class="legend small" id="app-legend"></div>
+        <div id="app-chips" class="app-chips"></div>
+      </div>
+      <div class="card log-card">
+        <h3>Live log</h3>
+        <div id="log" class="log"></div>
+      </div>
+    </div>
+    <div id="run-error" class="card miss" hidden></div>
+  </div>
+</section>
+
+<!-- ============================== SCREEN 3: RESULTS ============================== -->
+<section id="screen-results" class="screen" hidden>
+  <header class="results-bar">
+    <div class="wrap bar-inner">
+      <b>Integration research agent</b>
+      <nav class="toc"><a href="#patterns">Patterns</a><a href="#findings">All apps</a><a href="#agent">How it works</a><a href="#verification">Verification</a><a href="#data">Data</a></nav>
+      <button id="new-run" class="ghost">New run</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="patterns">
+      <p class="eyebrow" id="results-meta"></p>
+      <h2>What we found</h2>
+      <ol id="headlines" class="headlines"><li class="muted">Loading…</li></ol>
+      <div id="kpis" class="kpis"></div>
+      <div class="grid2">
+        <div class="card"><h3>Which auth dominates</h3><p class="sub">Apps supporting each method (an app can support several)</p><div id="chart-auth"></div></div>
+        <div class="card"><h3>Most common blockers</h3><p class="sub">Apps that are not "Buildable now", grouped by main blocker</p><div id="chart-blockers"></div></div>
+      </div>
+      <div class="card"><h3>Self-serve vs gated, by category</h3><p class="sub">How a developer gets credentials. Darker cell = more apps.</p><div id="matrix" class="scroll-x"></div></div>
+      <div class="card"><h3>Buildability verdict, by category</h3><div id="verdict-legend" class="legend"></div><div id="chart-verdict"></div></div>
+      <div class="grid3">
+        <div class="card win"><h3>Easy wins</h3><p class="sub">Self-serve credentials, medium or broad API, buildable today</p><div id="list-easy" class="chips"></div></div>
+        <div class="card outreach"><h3>Needs outreach</h3><p class="sub">Partner program, contact sales, or approval required</p><div id="list-outreach" class="chips"></div></div>
+        <div class="card paid"><h3>Needs a paid account</h3><p class="sub">API exists but sits behind a paid plan</p><div id="list-paid" class="chips"></div></div>
+      </div>
+    </section>
+
+    <section id="findings">
+      <h2>All apps</h2>
+      <p class="sub">Click a row to see the evidence and the agent's step-by-step trace for that app.</p>
+      <div class="filters">
+        <input id="f-q" type="search" placeholder="Search app…">
+        <select id="f-cat"><option value="">All categories</option></select>
+        <select id="f-access"><option value="">All access types</option></select>
+        <select id="f-verdict"><option value="">All verdicts</option></select>
+        <select id="f-status"><option value="">All check statuses</option></select>
+        <span id="f-count" class="muted"></span>
+      </div>
+      <div class="scroll-x">
+        <table id="results" class="results">
+          <thead><tr><th>#</th><th>App</th><th>Category</th><th>Auth</th><th>Access</th><th>API</th><th>MCP</th><th>Verdict</th><th>Main blocker</th><th>Check</th><th>Evidence</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="agent">
+      <h2>How the agent works</h2>
+      <p class="sub">Three LLM steps use Composio tools (Tavily search, Firecrawl scrape) to read the web. Everything after that is plain code or a person.</p>
+      <div class="flow">
+        <div class="step"><span class="n">1</span><b>Research agent</b><p>Composio → Tavily search (3 queries) · the LLM picks official pages · Composio → Firecrawl reads them · the LLM fills the schema with a quote + URL per field</p><code>pass1.json</code></div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="n">2</span><b>Verifier agent</b><p>Code checks: page loads, official domain, quote really on page. A different, stronger model judges each claim against the cited pages</p><code>flags.json</code></div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="n">3</span><b>Re-research</b><p>Only disputed fields, with targeted searches and the verifier's objection in the prompt; then re-verified</p><code>pass2.json</code></div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="n">4</span><b>Analysis</b><p>Plain Python: patterns, verifier stats, this page's data</p><code>summary.json</code></div>
+        <div class="arrow">→</div>
+        <div class="step human"><span class="n">5</span><b>Accuracy check</b><p>Sample of 2 apps per category, checked against the real docs</p><code>human_check.csv</code></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>Where a human was needed</h3><ul id="human-needed" class="tight"></ul></div>
+        <div class="card"><h3>Run stats</h3><dl id="run-stats" class="stats"></dl></div>
+      </div>
+    </section>
+
+    <section id="verification">
+      <h2>Verification: how we know it's right</h2>
+      <div class="card hc-card" id="hc-card">
+        <h3>Accuracy check</h3>
+        <p class="sub">Measure real accuracy: check a sample against the docs, then the page compares pass 1 and pass 2 with those answers.</p>
+        <ol class="hc-steps">
+          <li><a id="hc-download" class="btn ghost" href="#">Download check sheet</a></li>
+          <li>Fill <code>human_value</code>, <code>source_url</code> and <code>notes</code> in Google Sheets or Excel, then export as CSV.</li>
+          <li><label class="btn primary" for="hc-input">Upload filled sheet</label><input id="hc-input" type="file" accept=".csv,text/csv" hidden> <span id="hc-msg" class="small"></span></li>
+        </ol>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>Accuracy on the checked sample</h3><div id="acc-main"></div></div>
+        <div class="card"><h3>Accuracy by field</h3><div id="acc-fields"></div></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>What the verifier caught</h3><dl id="verifier-stats" class="stats"></dl></div>
+        <div class="card"><h3>Fixed by the loop</h3><p class="sub">Wrong on the first pass, right after verify + re-research</p><div id="fixed" class="scroll-x"></div></div>
+      </div>
+      <div class="card miss"><h3>Still wrong (shown honestly)</h3><p class="sub">Fields where the final answer disagrees with the check</p><div id="still-wrong" class="scroll-x"></div></div>
+      <details class="card"><summary><b>Every value the loop changed</b> <span id="changes-count" class="muted"></span></summary><div id="changes" class="scroll-x"></div></details>
+    </section>
+
+    <section id="data">
+      <h2>Data</h2>
+      <p>Everything on this page comes from these files, so another agent can read them directly. Download them: the free server forgets runs when it restarts.</p>
+      <div class="chips" id="downloads"></div>
+      <p><a id="repo-link" href="#">Source code and README</a></p>
+    </section>
+  </main>
+  <footer class="wrap muted small">Built with Composio (Tavily + Firecrawl tools) and OpenAI models. Values are what public docs said at run time; gated apps are reported from their public docs, not from paid accounts.</footer>
+</section>
+
+<div id="prompt-modal" class="modal" hidden>
+  <div class="modal-inner">
+    <button id="prompt-close" class="close" aria-label="Close">×</button>
+    <div id="prompt-body"></div>
+    <p class="muted small modal-foot">Edits are saved as a new version (v2, v3…) and become active; older versions are kept so you can switch back.
+      Each run records which versions it used. Versions live in <code>data/prompt_versions.json</code> ·
+      <a href="api/prompts/export">download versions</a></p>
+  </div>
+</div>
+
+<aside id="drawer" class="drawer" hidden>
+  <div class="drawer-inner"><button id="drawer-close" class="close" aria-label="Close">×</button><div id="drawer-body"></div></div>
+</aside>
+<script src="app.js"></script>
+</body>
+</html>

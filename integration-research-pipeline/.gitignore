@@ -1,0 +1,23 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+data/cache/
+*.tmp
+.DS_Store
+runs/
+preview_mock/
+_to_delete/
+run_log.txt
+.idea/
+
+# local working files (not needed on Render)
+Claude outputs/
+data/logs/
+data/pass1.json
+data/pass2.json
+data/flags.json
+data/changes.json
+data/human_check.csv
+data/summary.json
+check_sheet_ai_audit.csv

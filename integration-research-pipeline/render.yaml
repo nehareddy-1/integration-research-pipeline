@@ -1,0 +1,27 @@
+# Render Blueprint: New -> Blueprint -> pick this repo.
+# One free web service: serves the page AND runs the agent on uploaded CSVs.
+services:
+  - type: web
+    name: integration-research-agent
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: LLM_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: COMPOSIO_API_KEY
+        sync: false
+      - key: COMPOSIO_USER_ID
+        value: default
+      - key: MAX_ROWS
+        value: "100"
+      - key: PARALLEL_APPS
+        value: "10"
+      - key: LLM_RPM
+        value: "200"
